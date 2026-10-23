@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who Wants to Be a Millionaire? - 25 Questions</title>
+    <style>
+        :root {
+            --bg-color: #020215;
+            --panel-bg: rgba(10, 15, 45, 0.95);
+            --gold: #ffd700;
+            --orange: #ff8c00;
+            --blue-glow: #00d2ff;
+            --text-color: #ffffff;
+            --correct: #28a745;
+            --wrong: #dc3545;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at center, #0a1438 0%, #020215 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1100px;
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 15px;
+        }
+
+        @media (max-width: 800px) {
+            .game-container { grid-template-columns: 1fr; }
+            .money-tree { order: -1; max-height: 180px; overflow-y: auto; }
+        }
+
+        .main-stage {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .header-panel {
+            background: var(--panel-bg);
+            border: 2px solid var(--blue-glow);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lifelines { display: flex; gap: 8px; }
+
+        .lifeline-btn {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            background: #050b24;
+            color: var(--gold);
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .lifeline-btn:disabled {
+            border-color: #444;
+            color: #444;
+            opacity: 0.3;
+        }
+
+        .category-badge {
+            background: linear-gradient(45deg, var(--orange), var(--gold));
+            color: #000;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .question-box {
+            background: var(--panel-bg);
+            border: 2px solid var(--gold);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .audio-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .audio-btn {
+            background: #00d2ff;
+            border: none;
+            color: #000;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .spanish-translation {
+            font-size: 13px;
+            color: #a0c4ff;
+            margin-top: 8px;
+            font-style: italic;
+            display: none;
+        }
+
+        .toggle-trans-btn {
+            background: transparent;
+            border: 1px solid var(--blue-glow);
+            color: var(--blue-glow);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 500px) { .options-grid { grid-template-columns: 1fr; } }
+
+        .option-btn {
+            background: var(--panel-bg);
+            border: 2px solid #203a70;
+            border-radius: 25px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 15px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            outline: none;
+            transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+        }
+
+        .option-prefix { color: var(--gold); font-weight: bold; margin-right: 8px; }
+
+        .speak-opt-btn {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .option-btn.selected { background: #0056b3 !important; border-color: #00d2ff !important; color: #fff !important; }
+        .option-btn.correct { background: var(--correct) !important; border-color: #fff !important; color: #fff !important; }
+        .option-btn.wrong { background: var(--wrong) !important; border-color: #fff !important; color: #fff !important; }
+        .option-btn.hidden-option { opacity: 0.15; pointer-events: none; }
+
+        .money-tree {
+            background: var(--panel-bg);
+            border: 2px solid var(--blue-glow);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 2px;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+
+        .money-step {
+            display: flex; justify-content: space-between;
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: bold; color: var(--orange);
+        }
+
+        .money-step.safe { color: #ffffff; }
+        .money-step.active { background: var(--gold); color: #000; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-card {
+            background: #0a1438; border: 2px solid var(--gold);
+            border-radius: 15px; padding: 20px; max-width: 450px; width: 90%;
+            text-align: center;
+        }
+
+        .modal-card h2 { color: var(--gold); margin-bottom: 10px; }
+        .modal-card p { margin-bottom: 15px; font-size: 16px; }
+
+        .action-btn {
+            background: linear-gradient(45deg, var(--gold), var(--orange));
+            border: none; padding: 10px 25px; font-size: 15px; font-weight: bold;
+            color: #000; border-radius: 20px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="main-stage">
+            <div class="header-panel">
+                <div class="lifelines">
+                    <button class="lifeline-btn" id="btn-5050" onclick="use5050()">50:50</button>
+                    <button class="lifeline-btn" id="btn-phone" onclick="usePhone()">📞</button>
+                    <button class="lifeline-btn" id="btn-audience" onclick="useAudience()">👥</button>
+                </div>
+                <div class="category-badge" id="category-display">Categoría</div>
+            </div>
+
+            <div class="display-area">
+                <div class="question-box">
+                    <div id="question-text">Cargando...</div>
+                    
+                    <div class="audio-controls">
+                        <button class="audio-btn" onclick="speakCurrentQuestion()">🔊 Leer Pregunta</button>
+                        <button class="audio-btn" onclick="speakQuestionAndAllOptions()">🎧 Leer Opciones</button>
+                    </div>
+
+                    <button class="toggle-trans-btn" onclick="toggleTranslation()">🌐 Ver Traducción</button>
+                    <div class="spanish-translation" id="translation-text"></div>
+                </div>
+
+                <div class="options-grid">
+                    <button class="option-btn" id="opt-0" onclick="selectOption(0)">
+                        <div><span class="option-prefix">A:</span> <span class="option-text"></span></div>
+                        <span class="speak-opt-btn" onclick="event.stopPropagation(); speakOption(0)">🔊</span>
+                    </button>
+                    <button class="option-btn" id="opt-1" onclick="selectOption(1)">
+                        <div><span class="option-prefix">B:</span> <span class="option-text"></span></div>
+                        <span class="speak-opt-btn" onclick="event.stopPropagation(); speakOption(1)">🔊</span>
+                    </button>
+                    <button class="option-btn" id="opt-2" onclick="selectOption(2)">
+                        <div><span class="option-prefix">C:</span> <span class="option-text"></span></div>
+                        <span class="speak-opt-btn" onclick="event.stopPropagation(); speakOption(2)">🔊</span>
+                    </button>
+                    <button class="option-btn" id="opt-3" onclick="selectOption(3)">
+                        <div><span class="option-prefix">D:</span> <span class="option-text"></span></div>
+                        <span class="speak-opt-btn" onclick="event.stopPropagation(); speakOption(3)">🔊</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="money-tree" id="money-tree"></div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <h2 id="modal-title">Título</h2>
+            <div id="modal-body">Contenido...</div>
+            <button class="action-btn" id="modal-btn" onclick="closeModal()">Continuar</button>
+        </div>
+    </div>
+
+    <script>
+        const questionBank = [
+            // Weather (1-5)
+            { category: "Weather", q: "1. How do you say 'Hoy está lloviendo' in English?", trans: "¿Cómo se dice 'Hoy está lloviendo' en inglés?", options: ["It is sunny today", "It is raining today", "It is snowy today", "It is windy today"], correct: 1, hint: "Llover se dice 'rain'." },
+            { category: "Weather", q: "2. Complete: 'It is very ________ today, put on a coat!'", trans: "Completa: 'Está muy ________ hoy, ¡ponte un abrigo!'", options: ["hot", "sunny", "cold", "warm"], correct: 2, hint: "Si usas abrigo (coat) es porque hace frío." },
+            { category: "Weather", q: "3. Which word describes a day with many clouds in the sky?", trans: "¿Qué palabra describe un día con muchas nubes en el cielo?", options: ["Sunny", "Cloudy", "Rainy", "Freezing"], correct: 1, hint: "Cloud significa nube." },
+            { category: "Weather", q: "4. Which word is associated with a bright, warm day with clear sky?", trans: "¿Qué palabra se asocia con un día brillante y cálido con cielo despejado?", options: ["Cloudy", "Snowy", "Sunny", "Stormy"], correct: 2, hint: "Sun significa sol." },
+            { category: "Weather", q: "5. What's the weather like when it's freezing and white outside?", trans: "¿Cómo está el clima cuando está helando y todo está blanco afuera?", options: ["Rainy", "Snowy", "Hot", "Sunny"], correct: 1, hint: "Snow significa nieve." },
+
+            // There is / There are (6-10)
+            { category: "There is / There are", q: "6. Which is the correct option: '________ a book on the table'?", trans: "¿Cuál es la opción correcta: '________ un libro sobre la mesa'?", options: ["There are", "There is", "Is there", "Are there"], correct: 1, hint: "'A book' es singular (un libro)." },
+            { category: "There is / There are", q: "7. Complete: '________ three chairs in the kitchen.'", trans: "Completa: '________ tres sillas en la cocina.'", options: ["There is", "There are", "Is there", "There isn't"], correct: 1, hint: "'Three chairs' es plural (3 sillas)." },
+            { category: "There is / There are", q: "8. How do you ask if there is a TV in the room?", trans: "¿Cómo preguntas si hay un televisor en la habitación?", options: ["There is a TV in the room?", "Is there a TV in the room?", "Are there a TV in the room?", "There are a TV in the room?"], correct: 1, hint: "Para preguntar en singular inviertes a 'Is there...?'." },
+            { category: "There is / There are", q: "9. What is the correct negative form for 'No hay manzanas en la mesa'?", trans: "¿Cuál es la forma negativa correcta para 'No hay manzanas en la mesa'?", options: ["There isn't apples on the table", "There are no apples on the table", "There is no apples on the table", "Is there no apples on the table"], correct: 1, hint: "Apples es plural, requiere 'There are not / no'." },
+            { category: "There is / There are", q: "10. Complete: '________ two lamps in the living room.'", trans: "Completa: '________ dos lámparas en la sala.'", options: ["There is", "There are", "Is there", "There isn't"], correct: 1, hint: "'Two lamps' es plural." },
+
+            // Prepositions of Place (11-15)
+            { category: "Prepositions of Place", q: "11. If the cat is under the bed, which preposition do you use?", trans: "Si el gato está debajo de la cama, ¿qué preposición usas?", options: ["On", "In", "Under", "Behind"], correct: 2, hint: "Debajo de = Under." },
+            { category: "Prepositions of Place", q: "12. Complete: 'The keys are ________ the drawer.'", trans: "Completa: 'Las llaves están ________ del cajón.'", options: ["on", "in", "under", "between"], correct: 1, hint: "Dentro de un espacio cerrado = In." },
+            { category: "Prepositions of Place", q: "13. What does the preposition 'behind' mean?", trans: "¿Qué significa la preposición 'behind'?", options: ["Debajo de", "Detrás de", "Encima de", "Entre dos cosas"], correct: 1, hint: "Behind significa 'atrás / detrás'." },
+            { category: "Prepositions of Place", q: "14. Complete: 'The lamp is ________ the sofa and the armchair.'", trans: "Completa: 'La lámpara está ________ el sofá y el sillón.'", options: ["under", "between", "in", "behind"], correct: 1, hint: "En medio de dos objetos = Between." },
+            { category: "Prepositions of Place", q: "15. Complete: 'The cat is sleeping ________ the sofa.'", trans: "Completa: 'El gato está durmiendo ________ el sofá.'", options: ["in", "on", "under", "between"], correct: 1, hint: "Sobre una superficie = On." },
+
+            // Parts of the House (16-20)
+            { category: "Parts of the House", q: "16. Where do you usually sleep in the house?", trans: "¿Dónde duermes habitualmente en la casa?", options: ["Kitchen", "Bedroom", "Bathroom", "Garage"], correct: 1, hint: "Dormitorio / Habitación = Bedroom." },
+            { category: "Parts of the House", q: "17. What do you call the place where you cook food?", trans: "¿Cómo llamas al lugar donde cocinas la comida?", options: ["Dining room", "Kitchen", "Garage", "Bedroom"], correct: 1, hint: "Cocina = Kitchen." },
+            { category: "Parts of the House", q: "18. Where do people park their car in a house?", trans: "¿Dónde estaciona la gente su carro en una casa?", options: ["Garage", "Living room", "Bathroom", "Kitchen"], correct: 0, hint: "Garaje / Cochera = Garage." },
+            { category: "Parts of the House", q: "19. Which room is used for taking a shower and washing your hands?", trans: "¿Qué habitación se usa para ducharse y lavarse las manos?", options: ["Kitchen", "Dining room", "Bathroom", "Bedroom"], correct: 2, hint: "Baño = Bathroom." },
+            { category: "Parts of the House", q: "20. Where do you eat dinner with your family?", trans: "¿Dónde cenas con tu familia?", options: ["Dining room", "Garage", "Bathroom", "Bedroom"], correct: 0, hint: "Comedor = Dining room." },
+
+            // Objects in the House (21-25)
+            { category: "Objects in the House", q: "21. How do you say 'refrigerador / nevera' in English?", trans: "¿Cómo se dice 'refrigerador / nevera' en inglés?", options: ["Mirror", "Refrigerator", "Pillow", "Sofa"], correct: 1, hint: "Nevera = Refrigerator / Fridge." },
+            { category: "Objects in the House", q: "22. Which object is usually in the living room for sitting multiple people?", trans: "¿Qué objeto está en la sala para que se sientan varias personas?", options: ["Chair", "Pillow", "Sofa", "Bed"], correct: 2, hint: "Sofá = Sofa / Couch." },
+            { category: "Objects in the House", q: "23. Complete: 'I look at myself in the ________ in the bathroom.'", trans: "Completa: 'Me miro en el ________ en el baño.'", options: ["mirror", "pillow", "fridge", "lamp"], correct: 0, hint: "Espejo = Mirror." },
+            { category: "Objects in the House", q: "24. What object do you use on the bed to rest your head when sleeping?", trans: "¿Qué objeto usas en la cama para apoyar la cabeza al dormir?", options: ["Toothbrush", "Pillow", "Mirror", "Lamp"], correct: 1, hint: "Almohada = Pillow." },
+            { category: "Objects in the House", q: "25. What do you use to clean your teeth?", trans: "¿Qué usas para limpiarte los dientes?", options: ["Pillow", "Mirror", "Toothbrush", "Sofa"], correct: 2, hint: "Cepillo de dientes = Toothbrush." }
+        ];
+
+        const moneyLadder = [
+            "$100", "$200", "$300", "$400", "$500",
+            "$1,000", "$2,000", "$3,000", "$4,000", "$5,000",
+            "$10,000", "$15,000", "$20,000", "$25,000", "$30,000",
+            "$50,000", "$75,000", "$100,000", "$150,000", "$250,000",
+            "$400,000", "$550,000", "$700,000", "$850,000", "$1,000,000"
+        ];
+
+        let currentLevel = 0;
+        let selectedQuestions = [];
+        let currentQ = null;
+        let isAnswering = false;
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.85;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function speakCurrentQuestion() {
+            if (currentQ) speakText(currentQ.q);
+        }
+
+        function speakOption(index) {
+            if (currentQ && currentQ.options[index]) {
+                const prefixes = ['Option A', 'Option B', 'Option C', 'Option D'];
+                speakText(`${prefixes[index]}: ${currentQ.options[index]}`);
+            }
+        }
+
+        function speakQuestionAndAllOptions() {
+            if (currentQ) {
+                const fullText = `${currentQ.q}. Option A: ${currentQ.options[0]}. Option B: ${currentQ.options[1]}. Option C: ${currentQ.options[2]}. Option D: ${currentQ.options[3]}.`;
+                speakText(fullText);
+            }
+        }
+
+        function initGame() {
+            currentLevel = 0;
+            selectedQuestions = [...questionBank];
+            
+            document.getElementById('btn-5050').disabled = false;
+            document.getElementById('btn-phone').disabled = false;
+            document.getElementById('btn-audience').disabled = false;
+
+            renderLadder();
+            loadQuestion();
+        }
+
+        function renderLadder() {
+            const container = document.getElementById('money-tree');
+            container.innerHTML = '';
+            moneyLadder.forEach((amount, idx) => {
+                const step = document.createElement('div');
+                step.className = `money-step ${idx === 4 || idx === 9 || idx === 14 || idx === 19 || idx === 24 ? 'safe' : ''}`;
+                if (idx === currentLevel) step.classList.add('active');
+                step.innerHTML = `<span>${idx + 1}</span> <span>${amount}</span>`;
+                container.appendChild(step);
+            });
+            
+            const activeStep = container.querySelector('.money-step.active');
+            if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function loadQuestion() {
+            isAnswering = false;
+            currentQ = selectedQuestions[currentLevel];
+
+            document.getElementById('category-display').textContent = currentQ.category;
+            document.getElementById('question-text').textContent = currentQ.q;
+            document.getElementById('translation-text').textContent = currentQ.trans;
+            document.getElementById('translation-text').style.display = 'none';
+
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-${i}`);
+                btn.className = 'option-btn';
+                btn.disabled = false;
+                btn.blur();
+                btn.querySelector('.option-text').textContent = currentQ.options[i];
+            }
+
+            renderLadder();
+        }
+
+        function toggleTranslation() {
+            const el = document.getElementById('translation-text');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function selectOption(index) {
+            if (isAnswering) return;
+            isAnswering = true;
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+            const selectedBtn = document.getElementById(`opt-${index}`);
+            selectedBtn.classList.add('selected');
+
+            setTimeout(() => {
+                if (index === currentQ.correct) {
+                    selectedBtn.classList.remove('selected');
+                    selectedBtn.classList.add('correct');
+
+                    setTimeout(() => {
+                        currentLevel++;
+                        if (currentLevel >= 25) {
+                            showModal("¡FELICIDADES! 🏆", "¡Has completado las 25 preguntas correctamente y ganado $1,000,000!", true);
+                        } else {
+                            loadQuestion();
+                        }
+                    }, 1000);
+                } else {
+                    selectedBtn.classList.remove('selected');
+                    selectedBtn.classList.add('wrong');
+                    document.getElementById(`opt-${currentQ.correct}`).classList.add('correct');
+
+                    let prize = "$0";
+                    if (currentLevel >= 20) prize = "$250,000";
+                    else if (currentLevel >= 15) prize = "$30,000";
+                    else if (currentLevel >= 10) prize = "$5,000";
+                    else if (currentLevel >= 5) prize = "$500";
+
+                    setTimeout(() => {
+                        showModal("JUEGO TERMINADO ❌", `Respuesta incorrecta. Te llevas a casa: <strong>${prize}</strong>.`, true);
+                    }, 1200);
+                }
+            }, 800);
+        }
+
+        function use5050() {
+            document.getElementById('btn-5050').disabled = true;
+            let indices = [0, 1, 2, 3].filter(i => i !== currentQ.correct);
+            indices.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < 2; i++) {
+                document.getElementById(`opt-${indices[i]}`).classList.add('hidden-option');
+            }
+        }
+
+        function usePhone() {
+            document.getElementById('btn-phone').disabled = true;
+            showModal("📞 Profesor", `Pista: <em>${currentQ.hint}</em>`);
+        }
+
+        function useAudience() {
+            document.getElementById('btn-audience').disabled = true;
+            let percentages = [0, 0, 0, 0];
+            percentages[currentQ.correct] = 65;
+            let rem = 35;
+            for (let i = 0; i < 4; i++) {
+                if (i !== currentQ.correct) {
+                    let p = Math.floor(rem / 2);
+                    percentages[i] = p;
+                    rem -= p;
+                }
+            }
+            percentages[3] += rem;
+
+            let html = '<p>Votación del público:</p><br>';
+            ['A', 'B', 'C', 'D'].forEach((letter, i) => {
+                html += `<strong>${letter}:</strong> ${percentages[i]}%<br>`;
+            });
+
+            showModal("👥 Público", html);
+        }
+
+        function showModal(title, bodyText, isGameOver = false) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = bodyText;
+            const btn = document.getElementById('modal-btn');
+            
+            if (isGameOver) {
+                btn.textContent = "Jugar de Nuevo";
+                btn.onclick = () => {
+                    closeModal();
+                    initGame();
+                };
+            } else {
+                btn.textContent = "Continuar";
+                btn.onclick = closeModal;
+            }
+            
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
