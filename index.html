@@ -1,1492 +1,396 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrediControl Cloud - Sincronizado en Tiempo Real</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Pro/Solid -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS para Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Firebase SDK Compat (v10) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        boutique: '#9333ea',
-                        exclusive: '#2563eb',
-                        beauty: '#db2777'
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .glass-panel { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px); }
-        .glass-dark { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(16px); }
-        .pulse-live { animation: pulseGreen 2s infinite; }
-        @keyframes pulseGreen {
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-            70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
-        .shake-animation { animation: shake 0.4s ease-in-out; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-8px); }
-            40%, 80% { transform: translateX(8px); }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Henry Apartments BLDG#1 - Works Progress Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+  </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col font-sans antialiased">
 
-    <!-- PANTALLA DE INICIO DE SESIÓN -->
-    <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md">
-        <div id="loginCard" class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-indigo-500/10">
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/30 mb-4">
-                    <i class="fa-solid fa-gem text-2xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold tracking-tight text-white">CrediControl Cloud</h2>
-                <p class="text-xs text-slate-400 mt-1">Gestión Centralizada de Ventas y Cobranzas</p>
-                
-                <div class="flex items-center justify-center gap-3 mt-4 text-[11px] font-semibold text-slate-400">
-                    <span class="inline-flex items-center gap-1 text-purple-400"><i class="fa-solid fa-person-dress"></i> EPI Boutique</span>
-                    <span>•</span>
-                    <span class="inline-flex items-center gap-1 text-blue-400"><i class="fa-solid fa-crown"></i> Exclusive</span>
-                    <span>•</span>
-                    <span class="inline-flex items-center gap-1 text-pink-400"><i class="fa-solid fa-wand-magic-sparkles"></i> Beauty</span>
-                </div>
-            </div>
-
-            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
-                <div id="loginError" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-2 rounded-xl text-center font-medium"></div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Usuario</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                            <i class="fa-solid fa-user text-sm"></i>
-                        </span>
-                        <input type="text" id="loginUser" required autofocus autocomplete="off" placeholder="Ingresa tu usuario"
-                            class="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Contraseña</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-                            <i class="fa-solid fa-lock text-sm"></i>
-                        </span>
-                        <input type="password" id="loginPass" required placeholder="Ingresa tu clave"
-                            class="w-full pl-10 pr-10 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
-                        <button type="button" onclick="togglePassVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300">
-                            <i id="togglePassIcon" class="fa-solid fa-eye text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <button type="submit"
-                    class="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.98]">
-                    Iniciar Sesión
-                </button>
-            </form>
-
-            <div class="mt-6 pt-6 border-t border-slate-800/80 text-center">
-                <span class="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Conexión cifrada a Cloud Firestore
-                </span>
-            </div>
+  <!-- Header Section -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+          <i data-lucide="building-2" class="w-7 h-7"></i>
         </div>
-    </div>
-
-    <!-- APLICACIÓN PRINCIPAL -->
-    <div id="mainApp" class="flex-1 flex flex-col">
-        <!-- BARRA SUPERIOR (NAVBAR) -->
-        <header class="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                        <i class="fa-solid fa-gem"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-base font-bold text-white leading-tight">CrediControl Cloud</h1>
-                        <div class="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
-                            <span class="text-purple-400"><i class="fa-solid fa-person-dress"></i> Boutique</span>
-                            <span>•</span>
-                            <span class="text-blue-400"><i class="fa-solid fa-crown"></i> Exclusive</span>
-                            <span>•</span>
-                            <span class="text-pink-400"><i class="fa-solid fa-wand-magic-sparkles"></i> Beauty</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <!-- Badge Estado Firebase -->
-                    <div id="cloudStatusBadge" class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-live"></span>
-                        <span>Nube Conectada</span>
-                    </div>
-
-                    <!-- Botón Reporte por Marca -->
-                    <button onclick="openBrandReportModal()" class="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <span class="hidden sm:inline">Reporte por Marca</span>
-                    </button>
-
-                    <!-- Botón Exportar Excel -->
-                    <button onclick="exportToExcel()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
-                        <i class="fa-solid fa-file-excel text-emerald-400"></i>
-                        <span class="hidden md:inline">Descargar Excel</span>
-                    </button>
-
-                    <!-- Botón Cerrar Sesión -->
-                    <button onclick="handleLogout()" title="Cerrar Sesión" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
-            
-            <!-- TARJETAS DE MÉTRICAS GLOBALES (CONSOLIDADO Y POR MARCA) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Cartera Total Consolidada -->
-                <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 relative overflow-hidden">
-                    <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
-                        <span>Total por Cobrar</span>
-                        <i class="fa-solid fa-wallet text-indigo-400"></i>
-                    </div>
-                    <div id="statTotalDebt" class="text-2xl font-black text-rose-400">$0.00</div>
-                    <div class="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-                        <span id="statDebtorsCount">0 clientes deudores</span>
-                        <span id="statTotalClients">0 registrados</span>
-                    </div>
-                </div>
-
-                <!-- Deuda EPI Boutique -->
-                <div class="bg-purple-950/30 border border-purple-800/40 rounded-2xl p-4">
-                    <div class="flex items-center justify-between text-purple-300 text-xs font-medium mb-1">
-                        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-person-dress"></i> EPI Boutique</span>
-                        <span class="text-[10px] bg-purple-500/20 px-2 py-0.5 rounded-full">Marca</span>
-                    </div>
-                    <div id="statBoutiqueDebt" class="text-xl font-bold text-purple-300">$0.00</div>
-                    <p class="text-[11px] text-purple-400/80 mt-1">Saldo pendiente por cobrar</p>
-                </div>
-
-                <!-- Deuda Exclusive -->
-                <div class="bg-blue-950/30 border border-blue-800/40 rounded-2xl p-4">
-                    <div class="flex items-center justify-between text-blue-300 text-xs font-medium mb-1">
-                        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-crown"></i> Exclusive</span>
-                        <span class="text-[10px] bg-blue-500/20 px-2 py-0.5 rounded-full">Marca</span>
-                    </div>
-                    <div id="statExclusiveDebt" class="text-xl font-bold text-blue-300">$0.00</div>
-                    <p class="text-[11px] text-blue-400/80 mt-1">Saldo pendiente por cobrar</p>
-                </div>
-
-                <!-- Deuda Beauty -->
-                <div class="bg-pink-950/30 border border-pink-800/40 rounded-2xl p-4">
-                    <div class="flex items-center justify-between text-pink-300 text-xs font-medium mb-1">
-                        <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> Beauty</span>
-                        <span class="text-[10px] bg-pink-500/20 px-2 py-0.5 rounded-full">Marca</span>
-                    </div>
-                    <div id="statBeautyDebt" class="text-xl font-bold text-pink-300">$0.00</div>
-                    <p class="text-[11px] text-pink-400/80 mt-1">Saldo pendiente por cobrar</p>
-                </div>
-            </div>
-
-            <!-- BARRA DE ACCIÓN: BUSCADOR, FILTROS Y NUEVO CLIENTE -->
-            <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex-1 w-full flex flex-col sm:flex-row gap-3">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                        <input type="text" id="clientSearch" oninput="renderClientsTable()" placeholder="Buscar cliente por nombre, cédula o teléfono..."
-                            class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <select id="statusFilter" onchange="renderClientsTable()"
-                        class="bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
-                        <option value="all">Todos los clientes</option>
-                        <option value="debtors">Solo con Deuda Activa</option>
-                        <option value="settled">Clientes al Día ($0.00)</option>
-                    </select>
-                </div>
-                
-                <button onclick="openClientModal()" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>Nuevo Cliente</span>
-                </button>
-            </div>
-
-            <!-- TABLA DE CUENTAS POR COBRAR -->
-            <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-300">
-                        <thead class="bg-slate-900/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-700/80">
-                            <tr>
-                                <th class="py-3.5 px-4 font-semibold">Cliente / Contacto</th>
-                                <th class="py-3.5 px-4 font-semibold text-purple-400">Deuda Boutique</th>
-                                <th class="py-3.5 px-4 font-semibold text-blue-400">Deuda Exclusive</th>
-                                <th class="py-3.5 px-4 font-semibold text-pink-400">Deuda Beauty</th>
-                                <th class="py-3.5 px-4 font-semibold text-right">Deuda Total</th>
-                                <th class="py-3.5 px-4 font-semibold text-center">Acciones Rápidas</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientsTableBody" class="divide-y divide-slate-800/80">
-                            <!-- Inyectado vía JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <!-- MODAL: FICHA / HISTORIAL DEL CLIENTE -->
-    <div id="historyModal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm">
-        <div class="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            
-            <!-- Cabecera de la Ficha -->
-            <div class="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-800/30">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-xl font-bold border border-indigo-500/30">
-                        <i class="fa-solid fa-user"></i>
-                    </div>
-                    <div>
-                        <h3 id="histClientName" class="text-lg font-bold text-white">Nombre del Cliente</h3>
-                        <p class="text-xs text-slate-400 flex items-center gap-2">
-                            <span id="histClientDoc">CI: V-00000000</span> • 
-                            <span id="histClientPhone">Telf: 0412-0000000</span>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button onclick="printAccountStatement()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
-                        <i class="fa-solid fa-print"></i> Estado de Cuenta (A4)
-                    </button>
-                    <button onclick="shareViaWhatsApp()" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                        <i class="fa-brands fa-whatsapp"></i> Enviar Saldo
-                    </button>
-                    <button onclick="closeModal('historyModal')" class="text-slate-400 hover:text-white p-2 text-lg">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Balances por Marca del Cliente -->
-            <div class="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/40 border-b border-slate-800">
-                <div class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-2.5">
-                    <span class="text-[10px] text-purple-300 uppercase font-semibold"><i class="fa-solid fa-person-dress"></i> Boutique</span>
-                    <div id="histDebtBoutique" class="text-sm font-bold text-purple-400">$0.00</div>
-                </div>
-                <div class="bg-blue-950/30 border border-blue-800/40 rounded-xl p-2.5">
-                    <span class="text-[10px] text-blue-300 uppercase font-semibold"><i class="fa-solid fa-crown"></i> Exclusive</span>
-                    <div id="histDebtExclusive" class="text-sm font-bold text-blue-400">$0.00</div>
-                </div>
-                <div class="bg-pink-950/30 border border-pink-800/40 rounded-xl p-2.5">
-                    <span class="text-[10px] text-pink-300 uppercase font-semibold"><i class="fa-solid fa-wand-magic-sparkles"></i> Beauty</span>
-                    <div id="histDebtBeauty" class="text-sm font-bold text-pink-400">$0.00</div>
-                </div>
-                <div class="bg-slate-800/40 border border-slate-700 rounded-xl p-2.5">
-                    <span class="text-[10px] text-rose-300 uppercase font-semibold">Total Deuda</span>
-                    <div id="histDebtTotal" class="text-sm font-bold text-rose-400">$0.00</div>
-                </div>
-            </div>
-
-            <!-- Botones de Acción Inmediata dentro de la Ficha -->
-            <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-900">
-                <div class="flex items-center gap-2">
-                    <button onclick="triggerNewPurchaseFromHistory()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                        <i class="fa-solid fa-cart-plus"></i> + Registrar Compra
-                    </button>
-                    <button onclick="triggerNewPaymentFromHistory()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                        <i class="fa-solid fa-hand-holding-dollar"></i> + Abonar a Cuenta
-                    </button>
-                </div>
-                <button onclick="triggerEditClientFromHistory()" class="text-xs text-slate-400 hover:text-indigo-400 font-semibold flex items-center gap-1">
-                    <i class="fa-solid fa-user-pen"></i> Editar Datos
-                </button>
-            </div>
-
-            <!-- Extracto Cronológico de Movimientos -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <table class="w-full text-left text-xs text-slate-300">
-                    <thead class="bg-slate-800/80 text-[10px] uppercase text-slate-400 sticky top-0">
-                        <tr>
-                            <th class="py-2 px-3">Fecha</th>
-                            <th class="py-2 px-3">Tipo / Marca</th>
-                            <th class="py-2 px-3">Detalle / Método</th>
-                            <th class="py-2 px-3 text-right">Monto ($)</th>
-                            <th class="py-2 px-3 text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="histTransactionsBody" class="divide-y divide-slate-800">
-                        <!-- Inyectado vía JS -->
-                    </tbody>
-                </table>
-            </div>
-
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">The Henry Apartments — BLDG#1</h1>
+          <p class="text-xs text-gray-400">Works Progress Report & Real-time Analytics</p>
         </div>
+      </div>
+      <div class="flex items-center gap-3 w-full md:w-auto">
+        <label for="categoryFilter" class="text-xs font-medium text-gray-400 whitespace-nowrap">Trade Filter:</label>
+        <select id="categoryFilter" class="bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 transition">
+          <option value="ALL">All Categories / Overview</option>
+          <option value="DRYWALL RC CHANNEL">DRYWALL RC CHANNEL</option>
+          <option value="DRYWALL BOARD">DRYWALL BOARD</option>
+          <option value="DRYWALL TAPE & FINISH">DRYWALL TAPE & FINISH</option>
+          <option value="DRYWALL TEXTURE">DRYWALL TEXTURE</option>
+          <option value="PAINT, CAULKING & TOUCH-UP">PAINT, CAULKING & TOUCH-UP</option>
+          <option value="FLOORING">FLOORING</option>
+          <option value="BATHROOM TEXTURE">BATHROOM TEXTURE</option>
+          <option value="CABINETS">CABINETS</option>
+          <option value="BACKSPLASH">BACKSPLASH</option>
+          <option value="DOORS">DOORS</option>
+        </select>
+      </div>
     </div>
+  </header>
 
-    <!-- MODAL: REGISTRAR COMPRA A CRÉDITO -->
-    <div id="purchaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-5">
-                <h3 id="purchaseModalTitle" class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-cart-plus text-indigo-400"></i> Registrar Venta a Crédito
-                </h3>
-                <button onclick="closeActionModal('purchaseModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-            <form id="purchaseForm" onsubmit="savePurchase(event)" class="space-y-4">
-                <input type="hidden" id="purchaseClientId">
-                <input type="hidden" id="purchaseEditId">
-
-                <!-- Selector de Marca -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-2 uppercase">Seleccionar Marca</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="purchaseBrand" value="boutique" checked class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-purple-500 peer-checked:bg-purple-950/50 peer-checked:text-purple-300 transition-all">
-                                <i class="fa-solid fa-person-dress block text-base mb-1"></i> Boutique
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="purchaseBrand" value="exclusive" class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-blue-500 peer-checked:bg-blue-950/50 peer-checked:text-blue-300 transition-all">
-                                <i class="fa-solid fa-crown block text-base mb-1"></i> Exclusive
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="purchaseBrand" value="beauty" class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-pink-500 peer-checked:bg-pink-950/50 peer-checked:text-pink-300 transition-all">
-                                <i class="fa-solid fa-wand-magic-sparkles block text-base mb-1"></i> Beauty
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Monto en Dólares ($ USD)</label>
-                    <input type="number" step="0.01" min="0.01" id="purchaseAmount" required placeholder="0.00"
-                        class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold text-base focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descripción de Artículos</label>
-                    <input type="text" id="purchaseConcept" required placeholder="Ej: Vestido de fiesta, conjunto..."
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha de Compra</label>
-                    <input type="date" id="purchaseDate" required
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeActionModal('purchaseModal')" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30">Guardar Compra</button>
-                </div>
-            </form>
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      
+      <!-- Overall Progress -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Overall Progress</span>
+          <span class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="activity" class="w-5 h-5"></i></span>
         </div>
-    </div>
-
-    <!-- MODAL: REGISTRAR ABONO (CON RESTRICCIÓN MATEMÁTICA POR MARCA) -->
-    <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 id="paymentModalTitle" class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-hand-holding-dollar text-emerald-400"></i> Abonar a Deuda
-                </h3>
-                <button onclick="closeActionModal('paymentModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <!-- Deuda disponible de la Marca -->
-            <div id="paymentBrandAlert" class="mb-4 p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs">
-                <div class="flex justify-between items-center text-slate-300 mb-1">
-                    <span id="paymentSelectedBrandName">Marca Seleccionada: Boutique</span>
-                    <span id="paymentBrandDebtAvailable" class="font-bold text-rose-400">Debe: $0.00</span>
-                </div>
-                <div id="quickBrandSwitch" class="flex gap-1.5 mt-2 hidden">
-                    <span class="text-[10px] text-slate-400 self-center">Cambiar a:</span>
-                    <!-- Botones de cambio rápido generados dinámicamente -->
-                </div>
-            </div>
-
-            <form id="paymentForm" onsubmit="savePayment(event)" class="space-y-4">
-                <input type="hidden" id="paymentClientId">
-                <input type="hidden" id="paymentEditId">
-
-                <!-- Selector de Marca para Abono -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-2 uppercase">Abonar a la Marca</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentBrand" value="boutique" onchange="updatePaymentBrandLimit()" checked class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-purple-500 peer-checked:bg-purple-950/50 peer-checked:text-purple-300 transition-all">
-                                <i class="fa-solid fa-person-dress block text-base mb-1"></i> Boutique
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentBrand" value="exclusive" onchange="updatePaymentBrandLimit()" class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-blue-500 peer-checked:bg-blue-950/50 peer-checked:text-blue-300 transition-all">
-                                <i class="fa-solid fa-crown block text-base mb-1"></i> Exclusive
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="paymentBrand" value="beauty" onchange="updatePaymentBrandLimit()" class="peer sr-only">
-                            <div class="p-3 text-center rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 peer-checked:border-pink-500 peer-checked:bg-pink-950/50 peer-checked:text-pink-300 transition-all">
-                                <i class="fa-solid fa-wand-magic-sparkles block text-base mb-1"></i> Beauty
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Monto a Abonar ($ USD)</label>
-                    <input type="number" step="0.01" min="0.01" id="paymentAmount" oninput="validatePaymentAmountLimit()" required placeholder="0.00"
-                        class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold text-base focus:outline-none focus:border-emerald-500">
-                    <p id="paymentAmountError" class="text-[11px] text-rose-400 font-medium mt-1 hidden"></p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Método de Pago</label>
-                        <select id="paymentMethod" onchange="toggleBsRateField()" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500">
-                            <option value="Efectivo">$ Efectivo</option>
-                            <option value="Zelle">Zelle</option>
-                            <option value="Bolívares">Bolívares (Pago Móvil/Transf)</option>
-                            <option value="USDT">USDT (Binance Pay)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha</label>
-                        <input type="date" id="paymentDate" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <!-- Campo condicional para Bolívares -->
-                <div id="bsRateContainer" class="hidden p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-2">
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-400">Tasa de Cambio (Bs/$):</span>
-                        <input type="number" step="0.01" id="paymentExchangeRate" placeholder="Ej: 36.50" oninput="calculateBsEquivalent()" class="w-24 px-2 py-1 bg-slate-900 border border-slate-700 rounded text-right text-white text-xs">
-                    </div>
-                    <div class="text-right text-xs font-bold text-emerald-400">
-                        Equivalente: <span id="paymentBsTotal">0.00 Bs</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Referencia / Comprobante (Opcional)</label>
-                    <input type="text" id="paymentRef" placeholder="Ej: Ref #4928"
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeActionModal('paymentModal')" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancelar</button>
-                    <button id="btnSubmitPayment" type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/30">Procesar Abono</button>
-                </div>
-            </form>
+        <div class="mt-4 flex items-baseline justify-between">
+          <span id="kpiOverall" class="text-3xl font-extrabold text-white">73.8%</span>
+          <span class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Active
+          </span>
         </div>
-    </div>
-
-    <!-- MODAL: REGISTRAR / EDITAR CLIENTE -->
-    <div id="clientModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 id="clientModalTitle" class="text-base font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-user-plus text-indigo-400"></i> Nuevo Cliente
-                </h3>
-                <button onclick="closeActionModal('clientModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <form id="clientForm" onsubmit="saveClient(event)" class="space-y-4">
-                <input type="hidden" id="editClientId">
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo</label>
-                    <input type="text" id="clientName" required placeholder="Nombre del cliente"
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Cédula / RIF</label>
-                        <input type="text" id="clientDoc" required placeholder="V-00000000"
-                            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Teléfono / WhatsApp</label>
-                        <input type="text" id="clientPhone" required placeholder="0414-0000000"
-                            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Dirección / Sector (Opcional)</label>
-                    <input type="text" id="clientAddress" placeholder="Sector, Ciudad..."
-                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                </div>
-
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeActionModal('clientModal')" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">Guardar</button>
-                </div>
-            </form>
+        <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
+          <div id="barOverall" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 73.8%"></div>
         </div>
-    </div>
+      </div>
 
-    <!-- MODAL: REPORTE POR MARCA (ESTADÍSTICAS Y AUDITORÍA) -->
-    <div id="brandReportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-sm">
-        <div class="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-800/30">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-violet-600/20 text-violet-400 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-chart-pie"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-bold text-white">Auditoría Financiera por Marca</h3>
-                        <p class="text-xs text-slate-400">Desglose de Ventas a Crédito, Abonos y Saldos por Cobrar</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="printBrandReport()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700">
-                        <i class="fa-solid fa-print"></i> Imprimir Reporte
-                    </button>
-                    <button onclick="closeModal('brandReportModal')" class="text-slate-400 hover:text-white p-2 text-lg">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-6 overflow-y-auto space-y-6">
-                <!-- Tabla Comparativa de Marcas -->
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden">
-                    <table class="w-full text-left text-xs text-slate-300">
-                        <thead class="bg-slate-900 text-[10px] uppercase text-slate-400">
-                            <tr>
-                                <th class="py-3 px-4 font-semibold">Marca</th>
-                                <th class="py-3 px-4 font-semibold text-right">Ventas Crédito ($)</th>
-                                <th class="py-3 px-4 font-semibold text-right">Total Abonado ($)</th>
-                                <th class="py-3 px-4 font-semibold text-right">Deuda Activa ($)</th>
-                                <th class="py-3 px-4 font-semibold text-center">Efectividad Cobro</th>
-                            </tr>
-                        </thead>
-                        <tbody id="brandReportTableBody" class="divide-y divide-slate-800 font-medium">
-                            <!-- Inyectado vía JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Desglose de Pagos por Método -->
-                <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Recaudación por Método de Pago</h4>
-                    <div id="paymentMethodsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <!-- Inyectado vía JS -->
-                    </div>
-                </div>
-            </div>
+      <!-- Completed Units -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Completed Units</span>
+          <span class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="check-circle-2" class="w-5 h-5"></i></span>
         </div>
+        <div class="mt-4 flex items-baseline justify-between">
+          <span id="kpiUnits" class="text-3xl font-extrabold text-white">8 / 24</span>
+          <span id="kpiUnitsLabel" class="text-xs text-gray-400 font-medium">Finished Units</span>
+        </div>
+        <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
+          <div id="barUnits" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 33.3%"></div>
+        </div>
+      </div>
+
+      <!-- Completed Milestones -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Completed Milestones</span>
+          <span class="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><i data-lucide="layers" class="w-5 h-5"></i></span>
+        </div>
+        <div class="mt-4 flex items-baseline justify-between">
+          <span id="kpiMilestones" class="text-3xl font-extrabold text-white">177 / 240</span>
+          <span id="kpiMilestonesLabel" class="text-xs text-amber-400 font-medium">Stages Completed</span>
+        </div>
+        <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
+          <div id="barMilestones" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width: 73.8%"></div>
+        </div>
+      </div>
+
+      <!-- Trades Fully Done -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Trades Fully Done</span>
+          <span class="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><i data-lucide="trophy" class="w-5 h-5"></i></span>
+        </div>
+        <div class="mt-4 flex items-baseline justify-between">
+          <span id="kpiTrades" class="text-3xl font-extrabold text-white">4 / 10</span>
+          <span class="text-xs text-blue-400 font-medium">100% Complete</span>
+        </div>
+        <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
+          <div id="barTrades" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: 40%"></div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- CONTENEDOR OCULTO PARA IMPRESIÓN LIMPIA AISLADA -->
-    <iframe id="printFrame" class="hidden"></iframe>
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-base font-semibold text-white">Progress by Construction Trade (%)</h2>
+            <p class="text-xs text-gray-400">Comparison across all 10 specialized categories</p>
+          </div>
+          <div class="p-2 bg-gray-800 rounded-lg text-gray-400">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="relative h-72">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
 
-    <!-- LÓGICA JAVASCRIPT CON FIREBASE CLOUD FIRESTORE -->
-    <script>
-        // CONFIGURACIÓN DE FIREBASE (PROYECTO: credicontrol-tienda)
-        const firebaseConfig = {
-            apiKey: "AIzaSyATMDVPl_wT71JijcWA1oAdYkOs9_eyBOY",
-            authDomain: "credicontrol-tienda.firebaseapp.com",
-            projectId: "credicontrol-tienda",
-            storageBucket: "credicontrol-tienda.firebasestorage.app",
-            messagingSenderId: "946287073799",
-            appId: "1:946287073799:web:992f3dec57e97be336e8a2"
-        };
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-base font-semibold text-white">Milestone Completion</h2>
+            <p class="text-xs text-gray-400">Finished vs Pending Stages</p>
+          </div>
+          <div class="p-2 bg-gray-800 rounded-lg text-gray-400">
+            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="relative h-72 flex items-center justify-center">
+          <canvas id="stageDoughnutChart"></canvas>
+        </div>
+      </div>
+    </div>
 
-        // Inicializar Firebase
-        let db = null;
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            console.log("Firebase Firestore Inicializado");
-        } catch (e) {
-            console.error("Error al inicializar Firebase:", e);
-        }
+    <!-- Detailed Status Table -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div class="p-6 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-semibold text-white">Trade Process Overview</h2>
+          <p class="text-xs text-gray-400">Detailed breakdown of progress, milestone count, and finished units</p>
+        </div>
+        <div class="relative w-full sm:w-64">
+          <input type="text" id="tableSearch" placeholder="Search trade or category..." class="w-full bg-gray-800 border border-gray-700 text-xs rounded-lg pl-9 pr-3 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-2.5"></i>
+        </div>
+      </div>
 
-        // ESTADO GLOBAL DE LA APLICACIÓN
-        let clients = [];
-        let purchases = [];
-        let payments = [];
-        let currentClientId = null;
-        let returnToHistoryOnClose = false;
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-gray-300">
+          <thead class="text-xs uppercase bg-gray-800/60 text-gray-400 border-b border-gray-800">
+            <tr>
+              <th scope="col" class="px-6 py-3.5 font-semibold">Category / Trade</th>
+              <th scope="col" class="px-6 py-3.5 font-semibold">Total Units</th>
+              <th scope="col" class="px-6 py-3.5 font-semibold">Completed Units</th>
+              <th scope="col" class="px-6 py-3.5 font-semibold">Milestones</th>
+              <th scope="col" class="px-6 py-3.5 font-semibold">Progress Bar</th>
+              <th scope="col" class="px-6 py-3.5 font-semibold text-right">Status %</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-gray-800"></tbody>
+        </table>
+      </div>
+    </div>
 
-        // AUTENTICACIÓN
-        const AUTH_USER = "epiabonos";
-        const AUTH_PASS = "abonos1234#";
+  </main>
 
-        function checkAuth() {
-            const isAuth = sessionStorage.getItem("credicontrol_auth") === "true";
-            if (!isAuth) {
-                document.getElementById("loginOverlay").classList.remove("hidden");
-                document.getElementById("loginUser").focus();
-            } else {
-                document.getElementById("loginOverlay").classList.add("hidden");
-                startRealtimeSync();
+  <footer class="bg-gray-900 border-t border-gray-800 py-6 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">
+      <p>© 2026 The Henry Apartments BLDG#1. Interactive Web Dashboard Pro Version.</p>
+    </div>
+  </footer>
+
+  <script>
+    const dataset = [
+      { category: "DRYWALL RC CHANNEL", progress: 100.0, milestonesCompleted: 24, milestonesTotal: 24, unitsCompleted: 24, totalUnits: 24 },
+      { category: "DRYWALL BOARD", progress: 100.0, milestonesCompleted: 24, milestonesTotal: 24, unitsCompleted: 24, totalUnits: 24 },
+      { category: "DRYWALL TAPE & FINISH", progress: 100.0, milestonesCompleted: 24, milestonesTotal: 24, unitsCompleted: 24, totalUnits: 24 },
+      { category: "DRYWALL TEXTURE", progress: 100.0, milestonesCompleted: 24, milestonesTotal: 24, unitsCompleted: 24, totalUnits: 24 },
+      { category: "PAINT, CAULKING & TOUCH-UP", progress: 62.5, milestonesCompleted: 15, milestonesTotal: 24, unitsCompleted: 15, totalUnits: 24 },
+      { category: "FLOORING", progress: 62.5, milestonesCompleted: 15, milestonesTotal: 24, unitsCompleted: 15, totalUnits: 24 },
+      { category: "BATHROOM TEXTURE", progress: 62.5, milestonesCompleted: 15, milestonesTotal: 24, unitsCompleted: 15, totalUnits: 24 },
+      { category: "CABINETS", progress: 62.5, milestonesCompleted: 15, milestonesTotal: 24, unitsCompleted: 15, totalUnits: 24 },
+      { category: "BACKSPLASH", progress: 33.3, milestonesCompleted: 8, milestonesTotal: 24, unitsCompleted: 8, totalUnits: 24 },
+      { category: "DOORS", progress: 50.0, milestonesCompleted: 12, milestonesTotal: 24, unitsCompleted: 12, totalUnits: 24 }
+    ];
+
+    let categoryChart, stageDoughnutChart;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      initCharts(dataset);
+      renderTable(dataset);
+
+      document.getElementById('categoryFilter').addEventListener('change', handleFilterChange);
+      document.getElementById('tableSearch').addEventListener('input', handleSearch);
+    });
+
+    function initCharts(data) {
+      const ctxBar = document.getElementById('categoryChart').getContext('2d');
+      categoryChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.category),
+          datasets: [{
+            label: 'Progress (%)',
+            data: data.map(d => d.progress),
+            backgroundColor: data.map(d => d.progress === 100 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(99, 102, 241, 0.85)'),
+            borderColor: data.map(d => d.progress === 100 ? '#10b981' : '#6366f1'),
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` Progress: ${ctx.raw}%`
+              }
             }
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const user = document.getElementById("loginUser").value.trim();
-            const pass = document.getElementById("loginPass").value.trim();
-            const errorDiv = document.getElementById("loginError");
-            const card = document.getElementById("loginCard");
-
-            if (user === AUTH_USER && pass === AUTH_PASS) {
-                sessionStorage.setItem("credicontrol_auth", "true");
-                document.getElementById("loginOverlay").classList.add("hidden");
-                startRealtimeSync();
-            } else {
-                errorDiv.textContent = "Usuario o contraseña incorrectos";
-                errorDiv.classList.remove("hidden");
-                card.classList.add("shake-animation");
-                setTimeout(() => card.classList.remove("shake-animation"), 400);
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', callback: v => v + '%' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#9ca3af', font: { size: 10 } }
             }
+          }
         }
+      });
 
-        function handleLogout() {
-            sessionStorage.removeItem("credicontrol_auth");
-            location.reload();
-        }
+      const totalMilestones = data.reduce((acc, curr) => acc + curr.milestonesTotal, 0);
+      const completedMilestones = data.reduce((acc, curr) => acc + curr.milestonesCompleted, 0);
+      const pendingMilestones = totalMilestones - completedMilestones;
 
-        function togglePassVisibility() {
-            const passInput = document.getElementById("loginPass");
-            const icon = document.getElementById("togglePassIcon");
-            if (passInput.type === "password") {
-                passInput.type = "text";
-                icon.classList.replace("fa-eye", "fa-eye-slash");
-            } else {
-                passInput.type = "password";
-                icon.classList.replace("fa-eye-slash", "fa-eye");
+      const ctxDoughnut = document.getElementById('stageDoughnutChart').getContext('2d');
+      stageDoughnutChart = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Completed Stages', 'Pending Stages'],
+          datasets: [{
+            data: [completedMilestones, pendingMilestones],
+            backgroundColor: ['#10b981', '#374151'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '75%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#9ca3af', font: { size: 12 }, padding: 15 }
             }
+          }
         }
-
-        // SINCRONIZACIÓN EN TIEMPO REAL CON FIREBASE
-        function startRealtimeSync() {
-            if (!db) {
-                loadFromLocalStorage();
-                renderAll();
-                return;
-            }
-
-            // Escuchar Clientes
-            db.collection("clients").onSnapshot((snapshot) => {
-                clients = [];
-                snapshot.forEach(doc => clients.push({ id: doc.id, ...doc.data() }));
-                saveToLocalStorage();
-                renderAll();
-            }, (err) => {
-                console.error("Error al escuchar clientes:", err);
-                loadFromLocalStorage();
-                renderAll();
-            });
-
-            // Escuchar Compras
-            db.collection("purchases").onSnapshot((snapshot) => {
-                purchases = [];
-                snapshot.forEach(doc => purchases.push({ id: doc.id, ...doc.data() }));
-                saveToLocalStorage();
-                renderAll();
-            });
-
-            // Escuchar Abonos
-            db.collection("payments").onSnapshot((snapshot) => {
-                payments = [];
-                snapshot.forEach(doc => payments.push({ id: doc.id, ...doc.data() }));
-                saveToLocalStorage();
-                renderAll();
-            });
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem("cc_clients", JSON.stringify(clients));
-            localStorage.setItem("cc_purchases", JSON.stringify(purchases));
-            localStorage.setItem("cc_payments", JSON.stringify(payments));
-        }
-
-        function loadFromLocalStorage() {
-            clients = JSON.parse(localStorage.getItem("cc_clients") || "[]");
-            purchases = JSON.parse(localStorage.getItem("cc_purchases") || "[]");
-            payments = JSON.parse(localStorage.getItem("cc_payments") || "[]");
-        }
-
-        // CÁLCULOS MATEMÁTICOS DE SALDO POR MARCA
-        function getClientBalances(clientId) {
-            let bPurchases = { boutique: 0, exclusive: 0, beauty: 0 };
-            let bPayments = { boutique: 0, exclusive: 0, beauty: 0 };
-
-            purchases.filter(p => p.clientId === clientId).forEach(p => {
-                const b = p.brand || 'boutique';
-                bPurchases[b] = (bPurchases[b] || 0) + Number(p.amount);
-            });
-
-            payments.filter(p => p.clientId === clientId).forEach(p => {
-                const b = p.brand || 'boutique';
-                bPayments[b] = (bPayments[b] || 0) + Number(p.amount);
-            });
-
-            const debtBoutique = Math.max(0, bPurchases.boutique - bPayments.boutique);
-            const debtExclusive = Math.max(0, bPurchases.exclusive - bPayments.exclusive);
-            const debtBeauty = Math.max(0, bPurchases.beauty - bPayments.beauty);
-            const totalDebt = debtBoutique + debtExclusive + debtBeauty;
-
-            return {
-                boutique: debtBoutique,
-                exclusive: debtExclusive,
-                beauty: debtBeauty,
-                total: totalDebt,
-                totalPurchases: bPurchases.boutique + bPurchases.exclusive + bPurchases.beauty,
-                totalPayments: bPayments.boutique + bPayments.exclusive + bPayments.beauty
-            };
-        }
-
-        // RENDERIZADO GLOBAL
-        function renderAll() {
-            renderKPIs();
-            renderClientsTable();
-            if (currentClientId) {
-                renderClientHistory(currentClientId);
-            }
-        }
-
-        function renderKPIs() {
-            let globalTotalDebt = 0;
-            let globalBoutiqueDebt = 0;
-            let globalExclusiveDebt = 0;
-            let globalBeautyDebt = 0;
-            let debtors = 0;
-
-            clients.forEach(c => {
-                const b = getClientBalances(c.id);
-                globalTotalDebt += b.total;
-                globalBoutiqueDebt += b.boutique;
-                globalExclusiveDebt += b.exclusive;
-                globalBeautyDebt += b.beauty;
-                if (b.total > 0.01) debtors++;
-            });
-
-            document.getElementById("statTotalDebt").textContent = `$${globalTotalDebt.toFixed(2)}`;
-            document.getElementById("statBoutiqueDebt").textContent = `$${globalBoutiqueDebt.toFixed(2)}`;
-            document.getElementById("statExclusiveDebt").textContent = `$${globalExclusiveDebt.toFixed(2)}`;
-            document.getElementById("statBeautyDebt").textContent = `$${globalBeautyDebt.toFixed(2)}`;
-            document.getElementById("statDebtorsCount").textContent = `${debtors} con deuda activa`;
-            document.getElementById("statTotalClients").textContent = `${clients.length} registrados`;
-        }
-
-        function renderClientsTable() {
-            const search = (document.getElementById("clientSearch")?.value || "").toLowerCase();
-            const filter = document.getElementById("statusFilter")?.value || "all";
-            const tbody = document.getElementById("clientsTableBody");
-            tbody.innerHTML = "";
-
-            const filtered = clients.filter(c => {
-                const b = getClientBalances(c.id);
-                const matchesSearch = c.name.toLowerCase().includes(search) || 
-                                      c.doc.toLowerCase().includes(search) || 
-                                      c.phone.includes(search);
-                if (!matchesSearch) return false;
-                if (filter === "debtors") return b.total > 0.01;
-                if (filter === "settled") return b.total <= 0.01;
-                return true;
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500">No se encontraron clientes registrados</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(c => {
-                const b = getClientBalances(c.id);
-                const tr = document.createElement("tr");
-                tr.className = "hover:bg-slate-800/50 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-3 px-4">
-                        <button onclick="openHistoryModal('${c.id}')" class="text-left font-bold text-white hover:text-indigo-400">
-                            ${c.name}
-                        </button>
-                        <div class="text-[11px] text-slate-400">CI: ${c.doc} • Tel: ${c.phone}</div>
-                    </td>
-                    <td class="py-3 px-4 font-semibold text-purple-400">$${b.boutique.toFixed(2)}</td>
-                    <td class="py-3 px-4 font-semibold text-blue-400">$${b.exclusive.toFixed(2)}</td>
-                    <td class="py-3 px-4 font-semibold text-pink-400">$${b.beauty.toFixed(2)}</td>
-                    <td class="py-3 px-4 font-black text-right ${b.total > 0 ? 'text-rose-400' : 'text-emerald-400'}">
-                        $${b.total.toFixed(2)}
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <button onclick="triggerQuickPurchase('${c.id}')" title="Nueva Compra" class="p-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg text-xs">
-                                <i class="fa-solid fa-cart-plus"></i>
-                            </button>
-                            <button onclick="triggerQuickPayment('${c.id}')" title="Abonar" class="p-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg text-xs">
-                                <i class="fa-solid fa-hand-holding-dollar"></i>
-                            </button>
-                            <button onclick="openHistoryModal('${c.id}')" title="Ver Historial" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs">
-                                <i class="fa-solid fa-receipt"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // HISTORIAL / ESTADO DE CUENTA
-        function openHistoryModal(clientId) {
-            currentClientId = clientId;
-            const client = clients.find(c => c.id === clientId);
-            if (!client) return;
-
-            document.getElementById("histClientName").textContent = client.name;
-            document.getElementById("histClientDoc").textContent = `CI: ${client.doc}`;
-            document.getElementById("histClientPhone").textContent = `Telf: ${client.phone}`;
-
-            renderClientHistory(clientId);
-            document.getElementById("historyModal").classList.remove("hidden");
-        }
-
-        function renderClientHistory(clientId) {
-            const b = getClientBalances(clientId);
-            document.getElementById("histDebtBoutique").textContent = `$${b.boutique.toFixed(2)}`;
-            document.getElementById("histDebtExclusive").textContent = `$${b.exclusive.toFixed(2)}`;
-            document.getElementById("histDebtBeauty").textContent = `$${b.beauty.toFixed(2)}`;
-            document.getElementById("histDebtTotal").textContent = `$${b.total.toFixed(2)}`;
-
-            const clientPurchases = purchases.filter(p => p.clientId === clientId).map(p => ({ ...p, txType: 'PURCHASE' }));
-            const clientPayments = payments.filter(p => p.clientId === clientId).map(p => ({ ...p, txType: 'PAYMENT' }));
-            
-            const allTx = [...clientPurchases, ...clientPayments].sort((a,b) => new Date(b.date) - new Date(a.date));
-            const tbody = document.getElementById("histTransactionsBody");
-            tbody.innerHTML = "";
-
-            if (allTx.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">No hay movimientos registrados para este cliente</td></tr>`;
-                return;
-            }
-
-            allTx.forEach(tx => {
-                const tr = document.createElement("tr");
-                const isPurchase = tx.txType === 'PURCHASE';
-                const brand = tx.brand || 'boutique';
-                const brandColor = brand === 'boutique' ? 'text-purple-400' : (brand === 'exclusive' ? 'text-blue-400' : 'text-pink-400');
-                const brandName = brand === 'boutique' ? 'EPI Boutique' : (brand === 'exclusive' ? 'Exclusive' : 'Beauty');
-
-                tr.innerHTML = `
-                    <td class="py-2.5 px-3 text-slate-400">${tx.date}</td>
-                    <td class="py-2.5 px-3">
-                        <span class="inline-flex items-center gap-1 font-semibold ${isPurchase ? 'text-indigo-400' : 'text-emerald-400'}">
-                            <i class="fa-solid ${isPurchase ? 'fa-cart-shopping' : 'fa-hand-holding-dollar'}"></i>
-                            ${isPurchase ? 'Compra' : 'Abono'}
-                        </span>
-                        <span class="text-[10px] block ${brandColor}">${brandName}</span>
-                    </td>
-                    <td class="py-2.5 px-3">
-                        <span class="text-white">${isPurchase ? tx.concept : (tx.method + (tx.ref ? ' - Ref: ' + tx.ref : ''))}</span>
-                        ${tx.rate ? `<span class="text-[10px] block text-slate-400">Tasa: ${tx.rate} Bs/$</span>` : ''}
-                    </td>
-                    <td class="py-2.5 px-3 text-right font-bold ${isPurchase ? 'text-rose-400' : 'text-emerald-400'}">
-                        ${isPurchase ? '+' : '-'}$${Number(tx.amount).toFixed(2)}
-                    </td>
-                    <td class="py-2.5 px-3 text-center">
-                        ${!isPurchase ? `
-                            <button onclick="printPaymentTicket('${tx.id}')" title="Imprimir Ticket" class="p-1 text-slate-400 hover:text-emerald-400">
-                                <i class="fa-solid fa-print"></i>
-                            </button>
-                        ` : ''}
-                        <button onclick="${isPurchase ? `deletePurchase('${tx.id}')` : `deletePayment('${tx.id}')`}" title="Eliminar" class="p-1 text-slate-400 hover:text-rose-400 ml-1">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // TRANSICIÓN FLUIDA ENTRE MODALES
-        function triggerNewPurchaseFromHistory() {
-            returnToHistoryOnClose = true;
-            document.getElementById("historyModal").classList.add("hidden");
-            openPurchaseModal(currentClientId);
-        }
-
-        function triggerNewPaymentFromHistory() {
-            returnToHistoryOnClose = true;
-            document.getElementById("historyModal").classList.add("hidden");
-            openPaymentModal(currentClientId);
-        }
-
-        function triggerEditClientFromHistory() {
-            returnToHistoryOnClose = true;
-            document.getElementById("historyModal").classList.add("hidden");
-            openClientModal(currentClientId);
-        }
-
-        function triggerQuickPurchase(clientId) {
-            returnToHistoryOnClose = false;
-            openPurchaseModal(clientId);
-        }
-
-        function triggerQuickPayment(clientId) {
-            returnToHistoryOnClose = false;
-            openPaymentModal(clientId);
-        }
-
-        function closeActionModal(modalId) {
-            document.getElementById(modalId).classList.add("hidden");
-            if (returnToHistoryOnClose && currentClientId) {
-                document.getElementById("historyModal").classList.remove("hidden");
-            }
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add("hidden");
-        }
-
-        // CRUD: CLIENTES
-        function openClientModal(clientId = null) {
-            document.getElementById("clientForm").reset();
-            document.getElementById("editClientId").value = clientId || "";
-            if (clientId) {
-                const c = clients.find(item => item.id === clientId);
-                if (c) {
-                    document.getElementById("clientName").value = c.name;
-                    document.getElementById("clientDoc").value = c.doc;
-                    document.getElementById("clientPhone").value = c.phone;
-                    document.getElementById("clientAddress").value = c.address || "";
-                    document.getElementById("clientModalTitle").innerHTML = '<i class="fa-solid fa-user-pen text-indigo-400"></i> Editar Cliente';
-                }
-            } else {
-                document.getElementById("clientModalTitle").innerHTML = '<i class="fa-solid fa-user-plus text-indigo-400"></i> Nuevo Cliente';
-            }
-            document.getElementById("clientModal").classList.remove("hidden");
-        }
-
-        async function saveClient(e) {
-            e.preventDefault();
-            const editId = document.getElementById("editClientId").value;
-            const data = {
-                name: document.getElementById("clientName").value.trim(),
-                doc: document.getElementById("clientDoc").value.trim(),
-                phone: document.getElementById("clientPhone").value.trim(),
-                address: document.getElementById("clientAddress").value.trim()
-            };
-
-            if (editId) {
-                if (db) await db.collection("clients").doc(editId).update(data);
-                const idx = clients.findIndex(c => c.id === editId);
-                if (idx !== -1) clients[idx] = { id: editId, ...data };
-            } else {
-                if (db) {
-                    const docRef = await db.collection("clients").add(data);
-                    clients.push({ id: docRef.id, ...data });
-                } else {
-                    const tempId = 'cli_' + Date.now();
-                    clients.push({ id: tempId, ...data });
-                }
-            }
-
-            saveToLocalStorage();
-            closeActionModal("clientModal");
-            renderAll();
-        }
-
-        // CRUD: COMPRAS
-        function openPurchaseModal(clientId) {
-            document.getElementById("purchaseForm").reset();
-            document.getElementById("purchaseClientId").value = clientId;
-            document.getElementById("purchaseDate").value = new Date().toISOString().split('T')[0];
-            document.getElementById("purchaseModal").classList.remove("hidden");
-        }
-
-        async function savePurchase(e) {
-            e.preventDefault();
-            const clientId = document.getElementById("purchaseClientId").value;
-            const brand = document.querySelector('input[name="purchaseBrand"]:checked').value;
-            const amount = parseFloat(document.getElementById("purchaseAmount").value);
-            const concept = document.getElementById("purchaseConcept").value.trim();
-            const date = document.getElementById("purchaseDate").value;
-
-            const data = { clientId, brand, amount, concept, date, createdAt: Date.now() };
-
-            if (db) {
-                const docRef = await db.collection("purchases").add(data);
-                purchases.push({ id: docRef.id, ...data });
-            } else {
-                purchases.push({ id: 'pur_' + Date.now(), ...data });
-            }
-
-            saveToLocalStorage();
-            closeActionModal("purchaseModal");
-            renderAll();
-        }
-
-        async function deletePurchase(id) {
-            if (!confirm("¿Seguro que deseas anular esta compra? El saldo deudor del cliente disminuirá.")) return;
-            if (db) await db.collection("purchases").doc(id).delete();
-            purchases = purchases.filter(p => p.id !== id);
-            saveToLocalStorage();
-            renderAll();
-        }
-
-        // CRUD: ABONOS (CON REGLA MATEMÁTICA ESTRICTA POR MARCA)
-        function openPaymentModal(clientId) {
-            document.getElementById("paymentForm").reset();
-            document.getElementById("paymentClientId").value = clientId;
-            document.getElementById("paymentDate").value = new Date().toISOString().split('T')[0];
-            updatePaymentBrandLimit();
-            document.getElementById("paymentModal").classList.remove("hidden");
-        }
-
-        function updatePaymentBrandLimit() {
-            const clientId = document.getElementById("paymentClientId").value;
-            const b = getClientBalances(clientId);
-            const selectedBrand = document.querySelector('input[name="paymentBrand"]:checked')?.value || 'boutique';
-            const brandNames = { boutique: 'EPI Boutique', exclusive: 'Exclusive', beauty: 'Beauty' };
-
-            const availableDebt = b[selectedBrand];
-            document.getElementById("paymentSelectedBrandName").textContent = `Marca: ${brandNames[selectedBrand]}`;
-            document.getElementById("paymentBrandDebtAvailable").textContent = `Debe: $${availableDebt.toFixed(2)}`;
-
-            const quickSwitch = document.getElementById("quickBrandSwitch");
-            quickSwitch.innerHTML = '<span class="text-[10px] text-slate-400 self-center">Opciones:</span>';
-            
-            let hasOtherBrandsWithDebt = false;
-            ['boutique', 'exclusive', 'beauty'].forEach(br => {
-                if (br !== selectedBrand && b[br] > 0.01) {
-                    hasOtherBrandsWithDebt = true;
-                    const btn = document.createElement("button");
-                    btn.type = "button";
-                    btn.className = "text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 font-semibold";
-                    btn.textContent = `${brandNames[br]} ($${b[br].toFixed(2)})`;
-                    btn.onclick = () => {
-                        document.querySelector(`input[name="paymentBrand"][value="${br}"]`).checked = true;
-                        updatePaymentBrandLimit();
-                    };
-                    quickSwitch.appendChild(btn);
-                }
-            });
-
-            if (hasOtherBrandsWithDebt) quickSwitch.classList.remove("hidden");
-            else quickSwitch.classList.add("hidden");
-
-            validatePaymentAmountLimit();
-        }
-
-        function validatePaymentAmountLimit() {
-            const clientId = document.getElementById("paymentClientId").value;
-            const b = getClientBalances(clientId);
-            const selectedBrand = document.querySelector('input[name="paymentBrand"]:checked')?.value || 'boutique';
-            const availableDebt = b[selectedBrand];
-            const amountInput = document.getElementById("paymentAmount");
-            const enteredAmount = parseFloat(amountInput.value) || 0;
-            const errorElem = document.getElementById("paymentAmountError");
-            const submitBtn = document.getElementById("btnSubmitPayment");
-
-            if (availableDebt <= 0.001) {
-                errorElem.textContent = `Esta marca no tiene saldo deudor pendiente ($0.00). Elige otra marca.`;
-                errorElem.classList.remove("hidden");
-                submitBtn.disabled = true;
-                submitBtn.classList.add("opacity-50", "cursor-not-allowed");
-                return false;
-            }
-
-            if (enteredAmount > availableDebt + 0.001) {
-                errorElem.textContent = `No puedes abonar más de la deuda de esta marca ($${availableDebt.toFixed(2)}).`;
-                errorElem.classList.remove("hidden");
-                submitBtn.disabled = true;
-                submitBtn.classList.add("opacity-50", "cursor-not-allowed");
-                return false;
-            }
-
-            errorElem.classList.add("hidden");
-            submitBtn.disabled = false;
-            submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
-            return true;
-        }
-
-        function toggleBsRateField() {
-            const method = document.getElementById("paymentMethod").value;
-            const container = document.getElementById("bsRateContainer");
-            if (method === "Bolívares") container.classList.remove("hidden");
-            else container.classList.add("hidden");
-        }
-
-        function calculateBsEquivalent() {
-            const amount = parseFloat(document.getElementById("paymentAmount").value) || 0;
-            const rate = parseFloat(document.getElementById("paymentExchangeRate").value) || 0;
-            const total = amount * rate;
-            document.getElementById("paymentBsTotal").textContent = `${total.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs`;
-        }
-
-        async function savePayment(e) {
-            e.preventDefault();
-            if (!validatePaymentAmountLimit()) return;
-
-            const clientId = document.getElementById("paymentClientId").value;
-            const brand = document.querySelector('input[name="paymentBrand"]:checked').value;
-            const amount = parseFloat(document.getElementById("paymentAmount").value);
-            const method = document.getElementById("paymentMethod").value;
-            const date = document.getElementById("paymentDate").value;
-            const ref = document.getElementById("paymentRef").value.trim();
-            const rate = method === "Bolívares" ? parseFloat(document.getElementById("paymentExchangeRate").value) || null : null;
-
-            const data = { clientId, brand, amount, method, date, ref, rate, createdAt: Date.now() };
-
-            if (db) {
-                const docRef = await db.collection("payments").add(data);
-                payments.push({ id: docRef.id, ...data });
-            } else {
-                payments.push({ id: 'pay_' + Date.now(), ...data });
-            }
-
-            saveToLocalStorage();
-            closeActionModal("paymentModal");
-            renderAll();
-        }
-
-        async function deletePayment(id) {
-            if (!confirm("¿Deseas anular este abono? El saldo deudor del cliente aumentará.")) return;
-            if (db) await db.collection("payments").doc(id).delete();
-            payments = payments.filter(p => p.id !== id);
-            saveToLocalStorage();
-            renderAll();
-        }
-
-        // REPORTES POR MARCA
-        function openBrandReportModal() {
-            const tbody = document.getElementById("brandReportTableBody");
-            tbody.innerHTML = "";
-
-            const brands = [
-                { key: 'boutique', name: 'EPI Boutique', icon: 'fa-person-dress', color: 'text-purple-400' },
-                { key: 'exclusive', name: 'Exclusive', icon: 'fa-crown', color: 'text-blue-400' },
-                { key: 'beauty', name: 'Beauty', icon: 'fa-wand-magic-sparkles', color: 'text-pink-400' }
-            ];
-
-            brands.forEach(br => {
-                const totalSales = purchases.filter(p => (p.brand || 'boutique') === br.key).reduce((s, p) => s + Number(p.amount), 0);
-                const totalPaid = payments.filter(p => (p.brand || 'boutique') === br.key).reduce((s, p) => s + Number(p.amount), 0);
-                const pending = Math.max(0, totalSales - totalPaid);
-                const percent = totalSales > 0 ? ((totalPaid / totalSales) * 100).toFixed(1) : 100;
-
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-bold ${br.color} flex items-center gap-2">
-                        <i class="fa-solid ${br.icon}"></i> ${br.name}
-                    </td>
-                    <td class="py-3 px-4 text-right">$${totalSales.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-right text-emerald-400">$${totalPaid.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-right font-bold text-rose-400">$${pending.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-center font-bold">${percent}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            // Métodos
-            const grid = document.getElementById("paymentMethodsGrid");
-            grid.innerHTML = "";
-            const methods = ['Efectivo', 'Zelle', 'Bolívares', 'USDT'];
-            methods.forEach(m => {
-                const sum = payments.filter(p => p.method === m).reduce((s, p) => s + Number(p.amount), 0);
-                const card = document.createElement("div");
-                card.className = "bg-slate-900 p-3 rounded-xl border border-slate-800 text-center";
-                card.innerHTML = `
-                    <div class="text-[11px] text-slate-400">${m}</div>
-                    <div class="text-sm font-bold text-emerald-400 mt-1">$${sum.toFixed(2)}</div>
-                `;
-                grid.appendChild(card);
-            });
-
-            document.getElementById("brandReportModal").classList.remove("hidden");
-        }
-
-        // IMPRESIÓN AISLADA
-        function executePrint(htmlContent) {
-            const iframe = document.getElementById('printFrame');
-            const pri = iframe.contentWindow;
-            pri.document.open();
-            pri.document.write(htmlContent);
-            pri.document.close();
-            setTimeout(() => {
-                pri.focus();
-                pri.print();
-            }, 300);
-        }
-
-        function printPaymentTicket(paymentId) {
-            const pay = payments.find(p => p.id === paymentId);
-            if (!pay) return;
-            const client = clients.find(c => c.id === pay.clientId);
-            const b = getClientBalances(pay.clientId);
-            const brandNames = { boutique: 'EPI Boutique', exclusive: 'Exclusive', beauty: 'Beauty' };
-
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Recibo de Pago</title>
-                    <style>
-                        body { font-family: monospace; width: 78mm; margin: 0 auto; padding: 10px; color: #000; }
-                        .text-center { text-align: center; }
-                        .line { border-bottom: 1px dashed #000; margin: 8px 0; }
-                        .flex { display: flex; justify-content: space-between; }
-                        .bold { font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <div class="text-center">
-                        <div class="bold" style="font-size: 14px;">CREDICONTROL TIENDA</div>
-                        <div style="font-size: 11px;">EPI Boutique • Exclusive • Beauty</div>
-                        <div style="font-size: 10px;">COMPROBANTE DE ABONO</div>
-                    </div>
-                    <div class="line"></div>
-                    <div style="font-size: 11px;">
-                        <div>Fecha: ${pay.date}</div>
-                        <div>Cliente: ${client ? client.name : 'N/A'}</div>
-                        <div>CI/RIF: ${client ? client.doc : 'N/A'}</div>
-                        <div>Marca: ${brandNames[pay.brand || 'boutique']}</div>
-                        <div>Método: ${pay.method}</div>
-                        ${pay.ref ? `<div>Ref: ${pay.ref}</div>` : ''}
-                    </div>
-                    <div class="line"></div>
-                    <div class="flex bold" style="font-size: 14px;">
-                        <span>MONTO ABONADO:</span>
-                        <span>$${Number(pay.amount).toFixed(2)}</span>
-                    </div>
-                    <div class="line"></div>
-                    <div style="font-size: 11px;">
-                        <div class="flex"><span>Deuda Restante Marca:</span><span>$${b[pay.brand || 'boutique'].toFixed(2)}</span></div>
-                        <div class="flex bold"><span>Deuda Total Cliente:</span><span>$${b.total.toFixed(2)}</span></div>
-                    </div>
-                    <div class="line"></div>
-                    <div class="text-center" style="font-size: 10px; margin-top: 15px;">
-                        ____________________________<br>Firma del Cliente<br><br>
-                        ¡Gracias por su preferencia!
-                    </div>
-                </body>
-                </html>
-            `;
-            executePrint(html);
-        }
-
-        function printAccountStatement() {
-            if (!currentClientId) return;
-            const client = clients.find(c => c.id === currentClientId);
-            const b = getClientBalances(currentClientId);
-            const cPurchases = purchases.filter(p => p.clientId === currentClientId);
-            const cPayments = payments.filter(p => p.clientId === currentClientId);
-            const allTx = [...cPurchases.map(p=>({...p, type:'Compra'})), ...cPayments.map(p=>({...p, type:'Abono'}))].sort((x,y)=>new Date(x.date)-new Date(y.date));
-
-            let rows = "";
-            allTx.forEach(t => {
-                rows += `
-                    <tr>
-                        <td style="border: 1px solid #ccc; padding: 6px;">${t.date}</td>
-                        <td style="border: 1px solid #ccc; padding: 6px;">${t.type} (${t.brand})</td>
-                        <td style="border: 1px solid #ccc; padding: 6px;">${t.concept || t.method}</td>
-                        <td style="border: 1px solid #ccc; padding: 6px; text-align: right;">$${Number(t.amount).toFixed(2)}</td>
-                    </tr>
-                `;
-            });
-
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Estado de Cuenta</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 25px; color: #111; }
-                        h2, h4 { margin: 0; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
-                        .box { padding: 10px; background: #f4f4f4; border: 1px solid #ddd; margin-top: 10px; }
-                    </style>
-                </head>
-                <body>
-                    <h2>CREDICONTROL TIENDA</h2>
-                    <p style="font-size: 12px; color: #555;">EPI Boutique • Exclusive • Beauty</p>
-                    <div class="box">
-                        <strong>Cliente:</strong> ${client.name} | <strong>CI:</strong> ${client.doc} | <strong>Telf:</strong> ${client.phone}
-                    </div>
-                    <div class="box" style="display:flex; justify-content:space-between;">
-                        <div>Deuda Boutique: $${b.boutique.toFixed(2)}</div>
-                        <div>Deuda Exclusive: $${b.exclusive.toFixed(2)}</div>
-                        <div>Deuda Beauty: $${b.beauty.toFixed(2)}</div>
-                        <div><strong>Total Deudor: $${b.total.toFixed(2)}</strong></div>
-                    </div>
-                    <h4>Movimientos Registrados</h4>
-                    <table>
-                        <thead>
-                            <tr style="background:#eee;">
-                                <th style="border: 1px solid #ccc; padding: 6px;">Fecha</th>
-                                <th style="border: 1px solid #ccc; padding: 6px;">Tipo</th>
-                                <th style="border: 1px solid #ccc; padding: 6px;">Detalle</th>
-                                <th style="border: 1px solid #ccc; padding: 6px; text-align: right;">Monto</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </body>
-                </html>
-            `;
-            executePrint(html);
-        }
-
-        function printBrandReport() {
-            const brands = [
-                { key: 'boutique', name: 'EPI Boutique' },
-                { key: 'exclusive', name: 'Exclusive' },
-                { key: 'beauty', name: 'Beauty' }
-            ];
-
-            let rows = "";
-            brands.forEach(br => {
-                const totalSales = purchases.filter(p => (p.brand || 'boutique') === br.key).reduce((s, p) => s + Number(p.amount), 0);
-                const totalPaid = payments.filter(p => (p.brand || 'boutique') === br.key).reduce((s, p) => s + Number(p.amount), 0);
-                const pending = Math.max(0, totalSales - totalPaid);
-                rows += `
-                    <tr>
-                        <td style="border:1px solid #ccc; padding:8px;">${br.name}</td>
-                        <td style="border:1px solid #ccc; padding:8px; text-align:right;">$${totalSales.toFixed(2)}</td>
-                        <td style="border:1px solid #ccc; padding:8px; text-align:right;">$${totalPaid.toFixed(2)}</td>
-                        <td style="border:1px solid #ccc; padding:8px; text-align:right;"><strong>$${pending.toFixed(2)}</strong></td>
-                    </tr>
-                `;
-            });
-
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Reporte Financiero por Marca</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 30px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-                        th { background: #eee; }
-                    </style>
-                </head>
-                <body>
-                    <h2>CrediControl Cloud - Informe por Marca</h2>
-                    <p>Fecha de emisión: ${new Date().toLocaleDateString('es-VE')}</p>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="border:1px solid #ccc; padding:8px; text-align:left;">Marca</th>
-                                <th style="border:1px solid #ccc; padding:8px; text-align:right;">Ventas a Crédito</th>
-                                <th style="border:1px solid #ccc; padding:8px; text-align:right;">Abonos Cobrados</th>
-                                <th style="border:1px solid #ccc; padding:8px; text-align:right;">Saldo Deudor</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </body>
-                </html>
-            `;
-            executePrint(html);
-        }
-
-        // WHATSAPP
-        function shareViaWhatsApp() {
-            if (!currentClientId) return;
-            const client = clients.find(c => c.id === currentClientId);
-            const b = getClientBalances(currentClientId);
-
-            let cleanPhone = client.phone.replace(/[^0-9]/g, '');
-            if (cleanPhone.startsWith('0')) cleanPhone = '58' + cleanPhone.substring(1);
-
-            const msg = `Hola *${client.name}*, te saludamos de *CrediControl*.\n\n` +
-                        `Tu estado de cuenta actual:\n` +
-                        `• EPI Boutique: $${b.boutique.toFixed(2)}\n` +
-                        `• Exclusive: $${b.exclusive.toFixed(2)}\n` +
-                        `• Beauty: $${b.beauty.toFixed(2)}\n` +
-                        `-----------------------\n` +
-                        `*TOTAL PENDIENTE: $${b.total.toFixed(2)}*\n\n` +
-                        `¡Agradecemos tu confianza!`;
-
-            window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-        }
-
-        // EXPORTAR A EXCEL (.XLSX)
-        function exportToExcel() {
-            const wb = XLSX.utils.book_new();
-
-            // Clientes
-            const clientData = clients.map(c => {
-                const b = getClientBalances(c.id);
-                return {
-                    "Cédula": c.doc,
-                    "Cliente": c.name,
-                    "Teléfono": c.phone,
-                    "Deuda Boutique ($)": b.boutique,
-                    "Deuda Exclusive ($)": b.exclusive,
-                    "Deuda Beauty ($)": b.beauty,
-                    "Total Deuda ($)": b.total
-                };
-            });
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientData), "Saldos_Por_Marca");
-
-            // Compras
-            const purchaseData = purchases.map(p => {
-                const c = clients.find(item => item.id === p.clientId);
-                return {
-                    "Fecha": p.date,
-                    "Marca": p.brand,
-                    "Cliente": c ? c.name : 'N/A',
-                    "Cédula": c ? c.doc : 'N/A',
-                    "Artículos": p.concept,
-                    "Monto ($)": Number(p.amount)
-                };
-            });
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseData), "Historial_Compras");
-
-            // Abonos
-            const paymentData = payments.map(p => {
-                const c = clients.find(item => item.id === p.clientId);
-                return {
-                    "Fecha": p.date,
-                    "Marca": p.brand,
-                    "Cliente": c ? c.name : 'N/A',
-                    "Método": p.method,
-                    "Referencia": p.ref || '',
-                    "Monto ($)": Number(p.amount)
-                };
-            });
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paymentData), "Historial_Abonos");
-
-            XLSX.writeFile(wb, `CrediControl_Respaldo_${new Date().toISOString().split('T')[0]}.xlsx`);
-        }
-
-        // INICIALIZACIÓN AL ABRIR LA PÁGINA
-        window.addEventListener("DOMContentLoaded", () => {
-            checkAuth();
-        });
-    </script>
+      });
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No categories found matching your query.</td></tr>`;
+        return;
+      }
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-800/40 transition";
+        const badgeColor = item.progress === 100 
+          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+          : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+
+        tr.innerHTML = `
+          <td class="px-6 py-4 font-medium text-white flex items-center gap-2">
+            <span>${item.category}</span>
+          </td>
+          <td class="px-6 py-4 text-gray-400">${item.totalUnits}</td>
+          <td class="px-6 py-4 font-medium text-gray-200">${item.unitsCompleted}</td>
+          <td class="px-6 py-4 text-gray-400">${item.milestonesCompleted} / ${item.milestonesTotal}</td>
+          <td class="px-6 py-4">
+            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+              <div class="h-2 rounded-full transition-all ${item.progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width: ${item.progress}%"></div>
+            </div>
+          </td>
+          <td class="px-6 py-4 text-right">
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-md border ${badgeColor}">
+              ${item.progress.toFixed(1)}%
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleFilterChange(e) {
+      const selected = e.target.value;
+      if (selected === 'ALL') {
+        renderTable(dataset);
+        updateKPIs(dataset, true);
+        updateCharts(dataset);
+      } else {
+        const filtered = dataset.filter(d => d.category === selected);
+        renderTable(filtered);
+        updateKPIs(filtered, false);
+        updateCharts(filtered);
+      }
+    }
+
+    function handleSearch(e) {
+      const query = e.target.value.toLowerCase();
+      const filtered = dataset.filter(d => d.category.toLowerCase().includes(query));
+      renderTable(filtered);
+    }
+
+    function updateCharts(data) {
+      categoryChart.data.labels = data.map(d => d.category);
+      categoryChart.data.datasets[0].data = data.map(d => d.progress);
+      categoryChart.data.datasets[0].backgroundColor = data.map(d => d.progress === 100 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(99, 102, 241, 0.85)');
+      categoryChart.data.datasets[0].borderColor = data.map(d => d.progress === 100 ? '#10b981' : '#6366f1');
+      categoryChart.update();
+
+      const totalMilestones = data.reduce((acc, curr) => acc + curr.milestonesTotal, 0);
+      const completedMilestones = data.reduce((acc, curr) => acc + curr.milestonesCompleted, 0);
+      const pendingMilestones = totalMilestones - completedMilestones;
+
+      stageDoughnutChart.data.datasets[0].data = [completedMilestones, pendingMilestones];
+      stageDoughnutChart.update();
+    }
+
+    function updateKPIs(data, isAll) {
+      const totalMilestones = data.reduce((acc, curr) => acc + curr.milestonesTotal, 0);
+      const completedMilestones = data.reduce((acc, curr) => acc + curr.milestonesCompleted, 0);
+      const finishedTrades = data.filter(d => d.progress === 100).length;
+      const overallProgress = totalMilestones > 0 ? ((completedMilestones / totalMilestones) * 100).toFixed(1) : 0;
+
+      document.getElementById('kpiOverall').innerText = `${overallProgress}%`;
+      document.getElementById('barOverall').style.width = `${overallProgress}%`;
+
+      if (isAll) {
+        const fullyCompletedUnits = Math.min(...data.map(d => d.unitsCompleted));
+        document.getElementById('kpiUnits').innerText = `${fullyCompletedUnits} / 24`;
+        document.getElementById('kpiUnitsLabel').innerText = "Finished Units";
+        document.getElementById('barUnits').style.width = `${(fullyCompletedUnits / 24) * 100}%`;
+        document.getElementById('kpiMilestones').innerText = `${completedMilestones} / 240`;
+        document.getElementById('kpiMilestonesLabel').innerText = "Stages Completed";
+        document.getElementById('barMilestones').style.width = `${overallProgress}%`;
+        document.getElementById('kpiTrades').innerText = `${finishedTrades} / 10`;
+        document.getElementById('barTrades').style.width = `${(finishedTrades / 10) * 100}%`;
+      } else {
+        const item = data[0];
+        document.getElementById('kpiUnits').innerText = `${item.unitsCompleted} / 24`;
+        document.getElementById('kpiUnitsLabel').innerText = "Units in Trade";
+        document.getElementById('barUnits').style.width = `${item.progress}%`;
+        document.getElementById('kpiMilestones').innerText = `${item.milestonesCompleted} / ${item.milestonesTotal}`;
+        document.getElementById('kpiMilestonesLabel').innerText = "Trade Milestones";
+        document.getElementById('barMilestones').style.width = `${item.progress}%`;
+        document.getElementById('kpiTrades').innerText = item.progress === 100 ? "1 / 1" : "0 / 1";
+        document.getElementById('barTrades').style.width = item.progress === 100 ? "100%" : "0%";
+      }
+    }
+  </script>
 </body>
 </html>
